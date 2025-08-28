@@ -1,0 +1,77 @@
+//@version=5
+indicator("[MTF] 4H EMA vs 1H EMA + Signals (with Engulfing Confirm)", overlay=true, max_labels_count=500, max_lines_count=500)
+
+emaLen   = input.int(200, "EMA Length")
+rr       = input.float(3.0, "Reward:Risk Ratio", step=0.1)
+slPct    = input.float(1.0, "Stop Loss %", step=0.1)
+tpPct    = input.float(3.0, "Take Profit %", step=0.1)
+
+tf1 = input.string("60", "Lower TF (e.g. 1H)")
+tf2 = input.string("240", "Higher TF (e.g. 4H)")
+
+emaTF1 = request.security(syminfo.tickerid, tf1, ta.ema(close, emaLen))
+emaTF2 = request.security(syminfo.tickerid, tf2, ta.ema(close, emaLen))
+
+bullishAlign = emaTF1 > emaTF2 and close > emaTF1
+bearishAlign = emaTF1 < emaTF2 and close < emaTF1
+
+plot(emaTF1, "1H EMA 200", color=color.rgb(88, 255, 59), linewidth=2)
+plot(emaTF2, "4H EMA 200", color=color.rgb(255, 21, 0), linewidth=2)
+
+crossEvent = ta.cross(emaTF1, emaTF2)
+plotshape(crossEvent, title="Cross", style=shape.circle, color=color.rgb(232, 255, 82), size=size.small, location=location.abovebar)
+
+var label trendLabel = na
+if barstate.islast
+    label.delete(trendLabel)
+    bias = bullishAlign ? "🚀" : bearishAlign ? "☄️" : "Neutral"
+    col  = bullishAlign ? color.rgb(0, 230, 119, 87) : bearishAlign ? color.rgb(255, 82, 82, 85) : color.gray
+    trendLabel := label.new(bar_index, close, bias, style=label.style_label_left, color=col, textcolor=color.white)
+
+bullishEngulfing = close[1] < open[1] and close > open and close >= open[1] and open <= close[1]
+bearishEngulfing = close[1] > open[1] and close < open and close <= open[1] and open >= close[1]
+
+longSignal  = ta.crossover(close, emaTF1) and bullishAlign
+shortSignal = ta.crossunder(close, emaTF1) and bearishAlign
+
+contLong  = bullishAlign and ta.crossunder(close, emaTF1)
+contShort = bearishAlign and ta.crossover(close, emaTF1)
+
+var int signalCount = 0
+if crossEvent
+    signalCount := 0
+
+validLong  = (longSignal or contLong)  and signalCount < 3 and bullishEngulfing
+validShort = (shortSignal or contShort) and signalCount < 3 and bearishEngulfing
+
+if validLong or validShort
+    signalCount += 1
+
+plotshape(validLong and longSignal,  title="Primary Long",  style=shape.triangleup,   location=location.belowbar, color=color.lime, size=size.tiny, text="")
+plotshape(validShort and shortSignal, title="Primary Short", style=shape.triangledown, location=location.abovebar, color=color.red,  size=size.tiny, text="")
+
+plotshape(validLong and contLong,  title="Cont. Long",  style=shape.diamond, location=location.belowbar, color=color.green, size=size.tiny, text="L+E")
+plotshape(validShort and contShort, title="Cont. Short", style=shape.diamond, location=location.abovebar, color=color.orange, size=size.tiny, text="S+E")
+
+var line[] tpLines = array.new_line()
+var line[] slLines = array.new_line()
+
+makeTrade(_entry, _stop, _target, _isLong) =>
+    colTP = color.green
+    colSL = color.red
+    tp = line.new(bar_index, _target, bar_index+10, _target, color=colTP, style=line.style_dashed, width=1)
+    sl = line.new(bar_index, _stop,   bar_index+10, _stop,   color=colSL, style=line.style_dashed, width=1)
+    array.push(tpLines, tp)
+    array.push(slLines, sl)
+
+if validLong
+    entry = close
+    stop  = entry * (1 - slPct/100)
+    target = tpPct > 0 ? entry * (1 + tpPct/100) : entry + (entry - stop) * rr
+    makeTrade(entry, stop, target, true)
+
+if validShort
+    entry = close
+    stop  = entry * (1 + slPct/100)
+    target = tpPct > 0 ? entry * (1 - tpPct/100) : entry - (stop - entry) * rr
+    makeTrade(entry, stop, target, false)
