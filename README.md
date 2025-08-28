@@ -1,0 +1,1 @@
+# -MTF-4H-EMA-vs-1H-EMA-Signals-with-Engulfing-Confirm-
