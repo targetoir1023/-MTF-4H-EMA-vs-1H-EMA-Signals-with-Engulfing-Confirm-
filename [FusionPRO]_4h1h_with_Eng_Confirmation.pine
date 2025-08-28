@@ -9,8 +9,10 @@ tpPct    = input.float(3.0, "Take Profit %", step=0.1)
 tf1 = input.string("60", "Lower TF (e.g. 1H)")
 tf2 = input.string("240", "Higher TF (e.g. 4H)")
 
-emaTF1 = request.security(syminfo.tickerid, tf1, ta.ema(close, emaLen))
-emaTF2 = request.security(syminfo.tickerid, tf2, ta.ema(close, emaLen))
+// emaTF1 = request.security(syminfo.tickerid, tf1, ta.ema(close, emaLen))
+// emaTF2 = request.security(syminfo.tickerid, tf2, ta.ema(close, emaLen))
+emaTF1 = request.security(syminfo.tickerid, tf1, ta.ema(close, emaLen), lookahead=barmerge.lookahead_on)
+emaTF2 = request.security(syminfo.tickerid, tf2, ta.ema(close, emaLen), lookahead=barmerge.lookahead_on)
 
 bullishAlign = emaTF1 > emaTF2 and close > emaTF1
 bearishAlign = emaTF1 < emaTF2 and close < emaTF1
