@@ -1,5 +1,5 @@
 //@version=5
-indicator("[MTF] 4H EMA vs 1H EMA + Signals (with Engulfing Confirm)", overlay=true, max_labels_count=500, max_lines_count=500)
+indicator("EngulfX EMA Engine", overlay=true, max_labels_count=500, max_lines_count=500)
 
 emaLen   = input.int(200, "EMA Length")
 rr       = input.float(3.0, "Reward:Risk Ratio", step=0.1)
@@ -77,3 +77,4 @@ if validShort
     stop  = entry * (1 + slPct/100)
     target = tpPct > 0 ? entry * (1 - tpPct/100) : entry - (stop - entry) * rr
     makeTrade(entry, stop, target, false)
+
